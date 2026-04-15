@@ -1,0 +1,348 @@
+{
+  "name": "Intelligent Email Dispatcher & Responder",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "18096d83-cfb3-4439-9312-4bd4900401ef",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "0SAvhsf2Io4PMUuU",
+          "name": "Google Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $json.snippet }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "order",
+              "description": "When any email come with text inside include new order it will seperated"
+            },
+            {
+              "category": "enquiry",
+              "description": "If any email includes word enquiry or customer is asking any type of question, need to seperate it"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "efe3d435-793b-4073-a96a-cfdf20bebf8d",
+      "name": "Text Classifier"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        208,
+        192
+      ],
+      "id": "9ffd4eab-8bb3-456f-ab11-93da459f6a5e",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "iTFs3TqkoYmqyp0q",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You act as a copywriter and my personal Gmail assistant. Reply to this email:\n{{ $json.snippet }}\n\nStrict Instruction:\nRespond ONLY with a raw JSON object. Do not include markdown, backticks, or any text before or after the JSON.\n\nUse this exact structure:\n{\n\"subject\": \"subject line here\",\n\"body\": \"email body here\"\n}"
+            }
+          ]
+        },
+        "simplify": false,
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        624,
+        -32
+      ],
+      "id": "754e2631-e14a-494d-9977-ea30b3a8a66c",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "5YrAoQvmK1nT8wwJ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c25caa99-3bdf-4b21-934f-6c48df2745e6",
+              "name": "email_subject",
+              "value": "={{ JSON.parse($json.candidates[0].content.parts[0].text).subject }}",
+              "type": "string"
+            },
+            {
+              "id": "f439c894-8dc7-4e18-8432-d437df772002",
+              "name": "email_body",
+              "value": "={{ JSON.parse($json.candidates[0].content.parts[0].text).body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        -32
+      ],
+      "id": "d2085118-6c21-4eaa-bede-7d0ea04b706a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.email_subject }}",
+        "message": "={{ $json.email_body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1184,
+        -32
+      ],
+      "id": "09bb958c-569f-4456-9202-c253dc2dfc9b",
+      "name": "Create a draft",
+      "webhookId": "b52c0023-318c-4ad9-ba01-3f7d27cfc040",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "0SAvhsf2Io4PMUuU",
+          "name": "Google Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You act as a copywriter and my personal Gmail assistant. Reply to this email:\n\n{{ $('Gmail Trigger').item.json.snippet }}\n\nStrict Instruction:\nRespond ONLY with a raw JSON object. Do not include markdown, backticks, or any text before or after the JSON.\n\nUse this exact structure:\n{\n\"subject\": \"subject line here\",\n\"body\": \"email body here\"\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        208
+      ],
+      "id": "b28ef5e5-3598-4842-a77d-4616539b77cb",
+      "name": "Message a model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "5YrAoQvmK1nT8wwJ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c25caa99-3bdf-4b21-934f-6c48df2745e6",
+              "name": "email_subject",
+              "value": "={{ JSON.parse($json.content.parts[0].text).subject }}",
+              "type": "string"
+            },
+            {
+              "id": "f439c894-8dc7-4e18-8432-d437df772002",
+              "name": "email_body",
+              "value": "={{ JSON.parse($json.content.parts[0].text).body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1008,
+        208
+      ],
+      "id": "c19d0482-3ab1-426e-8365-6a5fd41bd7cc",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.email_subject }}",
+        "message": "={{ $json.email_body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        208
+      ],
+      "id": "421ba6ad-163e-4b71-9ab9-dcd099756da9",
+      "name": "Create a draft1",
+      "webhookId": "b52c0023-318c-4ad9-ba01-3f7d27cfc040",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "0SAvhsf2Io4PMUuU",
+          "name": "Google Auth"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Create a draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Create a draft1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "dc8cf33c-9661-4727-bea5-a7d181ad86e2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "58eb45eb9bf3199893a19138b55a1446f75b9df271e4cdcd43fbdfde8117cb9a"
+  },
+  "id": "OZOqoBGDqLoFhHH1",
+  "tags": []
+}
